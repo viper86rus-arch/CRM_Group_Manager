@@ -56,8 +56,8 @@ TG_API_HASH: str = os.getenv("TG_API_HASH", "")
 TG_PHONE: str = os.getenv("TG_PHONE", "")
 TG_CORPORATE_BOT_ID: str = os.getenv("TG_CORPORATE_BOT_ID", "@corp_bot")
 
-# Мессенджер Макс (REST API)
-MAX_API_URL: str = os.getenv("MAX_API_URL", "https://max.company.ru/api/v1")
+# Мессенджер Макс (REST API: dev.max.ru)
+MAX_API_URL: str = os.getenv("MAX_API_URL", "https://platform-api2.max.ru")
 MAX_API_TOKEN: str = os.getenv("MAX_API_TOKEN", "")
 MAX_CORPORATE_BOT_ID: str = os.getenv("MAX_CORPORATE_BOT_ID", "max_corp_bot_id")
 

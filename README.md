@@ -1,11 +1,12 @@
-# 🤖 CRM Group Manager: Микросервис управления группами в Telegram и Макс
+# 🤖 V1PER IT Solutions | CRM Group Manager: Управление группами в Telegram и Мессенджере МАКС
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python: 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Architecture: Clean Zero--Pip](https://img.shields.io/badge/Architecture-Clean%20Zero--Pip-emerald.svg)]()
+[![Studio](https://img.shields.io/badge/Studio-V1PER_IT_Solutions-emerald.svg)]()
+[![Architecture: Clean Zero--Pip](https://img.shields.io/badge/Architecture-Clean%20Zero--Pip-blueviolet.svg)]()
 [![Build: Passing](https://img.shields.io/badge/Build-Passing-brightgreen.svg)]()
 
-Автономный промышленный REST API микросервис на **Python**, реализующий автоматическое создание, тонкую настройку политик безопасности, администрирование и удаление проектных рабочих групп в мессенджерах **Telegram** (MTProto) и **Макс** по вебхукам из корпоративных CRM-систем (Битрикс24, amoCRM, Custom ERP).
+Автономный промышленный REST API микросервис студии **V1PER IT Solutions** на **Python**, реализующий автоматическое создание, тонкую настройку политик безопасности, администрирование и удаление проектных рабочих групп в мессенджерах **Telegram** (MTProto) и **Мессенджер МАКС** по вебхукам из корпоративных CRM-систем (Битрикс24, amoCRM, Custom ERP).
 
 ---
 
@@ -168,7 +169,7 @@ cp .env.example .env
 | `TG_API_ID` | Telegram API ID приложения (my.telegram.org) | `0` |
 | `TG_API_HASH` | Telegram API Hash приложения | `""` |
 | `TG_CORPORATE_BOT_ID` | Идентификатор корпоративного бота | `@corp_bot` |
-| `MAX_API_URL` | Базовый URL REST API мессенджера Макс | `https://max.company.ru/api/v1` |
+| `MAX_API_URL` | Базовый URL REST API Мессенджера МАКС | `https://platform-api2.max.ru` |
 | `MAX_API_TOKEN` | Корпоративный токен авторизации Макс | `""` |
 | `DEMO_MODE` | Режим работы (true / false) | `true` |
 

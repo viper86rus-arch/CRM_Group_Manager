@@ -68,7 +68,7 @@ class MaxManager:
         url = f"{self.api_url}/{endpoint.lstrip('/')}"
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_token}",
+            "Authorization": self.api_token,  # Официальный формат MAX: сырой токен без префикса Bearer
             "User-Agent": "CRM-Group-Manager/1.0.0 (V1PER)",
         }
         data = json.dumps(payload).encode("utf-8")

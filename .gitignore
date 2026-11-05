@@ -12,6 +12,7 @@ venv/
 .env
 *.session
 *.session-journal
+*.pem
 
 # Database & Runtime
 *.db
