@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# Environment credentials (Tier 1 Privacy Protocol)
+.env
+*.session
+*.session-journal
+
+# Database & Runtime
+*.db
+*.sqlite3
+logs/
+*.log
+
+# IDE & OS
+.idea/
+.vscode/
+.DS_Store
