@@ -17,7 +17,8 @@
 > - 💬 **Сквозная синхронизация:** двустороннее зеркалирование переписки между Telegram и Мессенджером МАКС.
 > - 🛡️ **Безопасность и аудит:** предотвращение утечек данных, скрытие номеров и детальный аудит всех действий.
 >
-> 📩 **Заказать корпоративную интеграцию:** [Заказать на Kwork (Безопасная сделка)](https://kwork.ru/user/viper86rus-arch) • [Создать заявку (Issue)](https://github.com/viper86rus-arch/CRM_Group_Manager/issues) • [Профиль студии](https://github.com/viper86rus-arch)
+> 📩 **Заказать корпоративную интеграцию:** [Заказать на Kwork (Безопасная сделка)](https://kwork.ru/user/V1PER86RUS) • [Создать заявку (Issue)](https://github.com/viper86rus-arch/CRM_Group_Manager/issues) • [Профиль студии](https://github.com/viper86rus-arch)
+
 
 
 ---
