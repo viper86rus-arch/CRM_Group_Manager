@@ -12,12 +12,21 @@ GitHub: https://github.com/viper86rus-arch/CRM_Group_Manager
 """
 
 import asyncio
+import re
 from typing import Any, Dict, Optional
 
 import config
 from models import CreateGroupRequest, GroupRecord
 
 logger = config.logger
+
+
+def mask_pii(text: str) -> str:
+    """Маскирует персональные данные (телефоны, токены) в логах."""
+    if not text:
+        return ""
+    return re.sub(r"(\+?\d{4})\d{3,6}(\d{2,4})", r"\1***\2", str(text))
+
 
 
 class MockTelegramClient:
@@ -46,12 +55,13 @@ class MockTelegramClient:
         logger.info(f"[TG Mock] Группа {chat_id}: добавлен корпоративный бот '{bot_id}', выданы права Администратора")
 
     async def send_task_binding_message(self, chat_id: str, task_number: str) -> str:
-        msg = f"/task {task_number}"
+        clean_task = re.sub(r"[^a-zA-Z0-9_\-\.]", "", str(task_number)).strip()
+        msg = f"/task {clean_task}"
         logger.info(f"[TG Mock] Группа {chat_id}: отправлено сервисное сообщение привязки к ЦРМ: '{msg}'")
         return msg
 
     async def add_contractor(self, chat_id: str, contractor_id: str) -> None:
-        logger.info(f"[TG Mock] Группа {chat_id}: добавлен подрядчик '{contractor_id}'")
+        logger.info(f"[TG Mock] Группа {chat_id}: добавлен подрядчик '{mask_pii(contractor_id)}'")
 
     async def delete_group(self, chat_id: str) -> bool:
         logger.info(f"[TG Mock] Группа {chat_id}: успешно удалена из Telegram по закрытию заказа.")
@@ -84,7 +94,8 @@ class TelegramManager:
             await self.mock_client.add_and_promote_bot(group_id, self.corp_bot_id)
             await self.mock_client.send_task_binding_message(group_id, req.task_number or req.order_id)
             await self.mock_client.add_contractor(group_id, req.contractor_id)
-            invite_link = f"https://t.me/c/{group_id.lstrip('-100')}/1"
+            clean_id = group_id.removeprefix("-100") if hasattr(group_id, "removeprefix") else (group_id[4:] if group_id.startswith("-100") else group_id)
+            invite_link = f"https://t.me/c/{clean_id}/1"
         else:
             # Боевой режим через Telethon (при наличии ключей API)
             try:
@@ -104,7 +115,9 @@ class TelegramManager:
             except ImportError:
                 logger.warning("Telethon не установлен, используется режим безопасной эмуляции.")
                 group_id = await self.mock_client.create_group(req.title, req.description)
-                invite_link = f"https://t.me/c/{group_id.lstrip('-100')}/1"
+                clean_id = group_id.removeprefix("-100") if hasattr(group_id, "removeprefix") else (group_id[4:] if group_id.startswith("-100") else group_id)
+                invite_link = f"https://t.me/c/{clean_id}/1"
+
 
         return {
             "group_id": group_id,

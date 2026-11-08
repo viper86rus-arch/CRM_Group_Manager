@@ -27,6 +27,13 @@ class CreateGroupRequest:
     task_number: Optional[str] = None
 
     def __post_init__(self):
+        self.order_id = str(self.order_id).strip()
+        self.title = str(self.title).strip()
+        self.contractor_id = str(self.contractor_id).strip()
+        if not self.order_id or not self.title or not self.contractor_id:
+            raise ValueError("Поля 'order_id', 'title' и 'contractor_id' не могут быть пустыми.")
+        if len(self.title) > 255:
+            raise ValueError("Длина поля 'title' не может превышать 255 символов.")
         self.messenger = self.messenger.lower().strip()
         if self.messenger not in ("telegram", "tg", "max", "макс"):
             raise ValueError(f"Неподдерживаемый мессенджер: {self.messenger}. Доступны: telegram, max")
@@ -52,12 +59,18 @@ class DeleteGroupRequest:
     order_id: str
     reason: Optional[str] = "Order completed"
 
+    def __post_init__(self):
+        self.order_id = str(self.order_id).strip()
+        if not self.order_id:
+            raise ValueError("Поле 'order_id' не может быть пустым.")
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DeleteGroupRequest":
         return cls(
             order_id=str(data.get("order_id", "")).strip(),
             reason=data.get("reason", "Order completed"),
         )
+
 
 
 @dataclass

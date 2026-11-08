@@ -140,6 +140,32 @@ class TestCRMGroupManager(unittest.TestCase):
         finally:
             storage.config.DB_PATH = orig_db
 
+    def test_csv_export_and_formula_injection_sanitization(self):
+        """Проверка безопасности экспорта в CSV и санитизации формул (CWE-1236)."""
+        malicious_rec = GroupRecord(
+            order_id="ORD-INJ-01",
+            messenger="telegram",
+            group_id="-100999999",
+            title="=cmd|' /C calc'!A0",
+            contractor_id="+79991234567",
+            invite_link="https://t.me/c/test",
+            status="active",
+        )
+        storage.save_group(malicious_rec, db_path=self.db_path)
+
+        export_file = self.db_path.parent / "test_export.csv"
+        try:
+            exported_path = storage.export_groups_to_csv(filepath=export_file, db_path=self.db_path)
+            self.assertTrue(exported_path.exists())
+
+            content = exported_path.read_text(encoding="utf-8-sig")
+            self.assertIn("'=cmd|' /C calc'!A0", content)
+            self.assertFalse(any(line.startswith("=") for line in content.splitlines()))
+        finally:
+            if export_file.exists():
+                export_file.unlink()
+
 
 if __name__ == "__main__":
     unittest.main()
+

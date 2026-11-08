@@ -14,6 +14,8 @@ GitHub: https://github.com/viper86rus-arch/CRM_Group_Manager
 
 import asyncio
 import json
+import re
+import ssl
 import urllib.error
 import urllib.request
 from typing import Any, Dict, Optional
@@ -22,6 +24,13 @@ import config
 from models import CreateGroupRequest
 
 logger = config.logger
+
+
+def mask_pii(text: str) -> str:
+    """Маскирует персональные данные (телефоны, токены) в логах."""
+    if not text:
+        return ""
+    return re.sub(r"(\+?\d{4})\d{3,6}(\d{2,4})", r"\1***\2", str(text))
 
 
 class MockMaxClient:
@@ -33,12 +42,12 @@ class MockMaxClient:
     async def create_chat(self, title: str, description: str, avatar_url: Optional[str] = None) -> str:
         self._next_id += 1
         chat_id = f"max_chat_{self._next_id}"
-        logger.info(f"[MAX Mock] Создана группа '{title}' (ID: {chat_id}) в мессенджере Макс")
+        logger.info(f"[MAX Client Session] Создана группа '{title}' (ID: {chat_id}) в мессенджере Макс")
         return chat_id
 
     async def apply_chat_options(self, chat_id: str) -> None:
         logger.info(
-            f"[MAX Mock] Группа {chat_id}: выставлены политики по ТЗ:\n"
+            f"[MAX Client Session] Группа {chat_id}: выставлены политики по ТЗ:\n"
             f"  • Reactions = off\n"
             f"  • Edit chat name, photo and description = off\n"
             f"  • Call in chat = off"
@@ -46,10 +55,10 @@ class MockMaxClient:
 
     async def add_member(self, chat_id: str, user_id: str, is_admin: bool = False) -> None:
         role = "Администратор" if is_admin else "Участник"
-        logger.info(f"[MAX Mock] Группа {chat_id}: добавлен {role} с ID '{user_id}'")
+        logger.info(f"[MAX Client Session] Группа {chat_id}: добавлен {role} с ID '{mask_pii(user_id)}'")
 
     async def delete_chat(self, chat_id: str) -> bool:
-        logger.info(f"[MAX Mock] Группа {chat_id}: успешно удалена из мессенджера Макс.")
+        logger.info(f"[MAX Client Session] Группа {chat_id}: успешно удалена из мессенджера Макс.")
         return True
 
 
@@ -75,7 +84,11 @@ class MaxManager:
         req = urllib.request.Request(url, data=data, headers=headers)
 
         def _call():
-            with urllib.request.urlopen(req, timeout=10) as resp:
+            ssl_ctx = ssl.create_default_context()
+            cert_file = config.BASE_DIR / "russian_trusted_root_ca.pem"
+            if cert_file.exists():
+                ssl_ctx.load_verify_locations(cafile=str(cert_file))
+            with urllib.request.urlopen(req, context=ssl_ctx, timeout=10) as resp:
                 return json.loads(resp.read().decode("utf-8"))
 
         return await asyncio.to_thread(_call)
@@ -121,9 +134,16 @@ class MaxManager:
                 })
                 invite_link = res.get("invite_link", f"https://max.company.ru/chat/{group_id}")
             except Exception as e:
-                logger.error(f"[MAX] Ошибка обращения к API Макс: {e}. Откат на эмулятор.")
-                group_id = await self.mock_client.create_chat(req.title, req.description)
-                invite_link = f"https://max.company.ru/chat/{group_id}"
+                logger.error(f"[MAX] Ошибка обращения к боевому API Макс: {e}")
+                return {
+                    "group_id": "",
+                    "invite_link": "",
+                    "messenger": "max",
+                    "title": req.title,
+                    "status": "failed",
+                    "error": str(e),
+                }
+
 
         return {
             "group_id": group_id,

@@ -13,16 +13,34 @@ GitHub: https://github.com/viper86rus-arch/CRM_Group_Manager
 import sqlite3
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+import csv
+
+from typing import Any, List, Optional
 
 import config
 from models import GroupRecord
 
 
+
+def sanitize_csv_cell(value: Any) -> str:
+    """Нейтрализует CSV/Excel Formula Injection (CWE-1236)."""
+    if value is None:
+        return ""
+    s = str(value).replace("\r", " ").replace("\n", " ").strip()
+    if s and s[0] in ("=", "+", "-", "@", "\t"):
+        return f"'{s}"
+    return s
+
+
 def get_connection(db_path: Optional[Path] = None) -> sqlite3.Connection:
     """Получение потокобезопасного соединения с базой данных SQLite."""
     path = db_path or config.DB_PATH
+    if path.parent:
+        path.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(path), timeout=10.0)
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA busy_timeout = 5000;")
+    conn.execute("PRAGMA synchronous = NORMAL;")
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -32,6 +50,8 @@ def init_db(db_path: Optional[Path] = None) -> None:
     conn = get_connection(db_path)
     try:
         with conn:
+            conn.execute("PRAGMA journal_mode = WAL;")
+            conn.execute("PRAGMA busy_timeout = 5000;")
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS order_groups (
                     order_id TEXT PRIMARY KEY,
@@ -49,6 +69,7 @@ def init_db(db_path: Optional[Path] = None) -> None:
             conn.execute("CREATE INDEX IF NOT EXISTS idx_status ON order_groups(status)")
     finally:
         conn.close()
+
 
 
 def save_group(record: GroupRecord, db_path: Optional[Path] = None) -> None:
@@ -139,3 +160,27 @@ def list_active_groups(db_path: Optional[Path] = None) -> List[GroupRecord]:
         ]
     finally:
         conn.close()
+
+
+def export_groups_to_csv(filepath: Optional[Path] = None, db_path: Optional[Path] = None) -> Path:
+    """Безопасный экспорт реестра групп в CSV с защитой от Formula Injection (CWE-1236)."""
+    out_path = filepath or (config.BASE_DIR / "exports" / f"groups_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv")
+    if out_path.parent:
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+    groups = list_active_groups(db_path=db_path)
+    with out_path.open("w", encoding="utf-8-sig", newline="") as f:
+        writer = csv.writer(f, delimiter=";")
+        writer.writerow(["Номер заказа", "Мессенджер", "ID группы", "Название", "Подрядчик", "Инвайт-ссылка", "Статус", "Дата создания"])
+        for g in groups:
+            writer.writerow([
+                sanitize_csv_cell(g.order_id),
+                sanitize_csv_cell(g.messenger),
+                sanitize_csv_cell(g.group_id),
+                sanitize_csv_cell(g.title),
+                sanitize_csv_cell(g.contractor_id),
+                sanitize_csv_cell(g.invite_link),
+                sanitize_csv_cell(g.status),
+                sanitize_csv_cell(g.created_at),
+            ])
+    return out_path
+

@@ -16,9 +16,10 @@ import asyncio
 import json
 import signal
 import sys
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, Dict, Optional
 from urllib.parse import parse_qs, urlparse
+
 
 import config
 import storage
@@ -67,7 +68,18 @@ async def process_create_group(data: Dict[str, Any]) -> ServiceResponse:
         else:
             res = await max_mgr.handle_create_order_group(req)
 
+        if res.get("error") or not res.get("group_id"):
+            err_msg = res.get("error", "Не удалось создать группу")
+            logger.error(f"Сбой при создании группы для заказа #{req.order_id}: {err_msg}")
+            return ServiceResponse(
+                success=False,
+                order_id=req.order_id,
+                message=f"Ошибка создания группы в {res.get('messenger', 'мессенджере')}: {err_msg}",
+                error=err_msg,
+            )
+
         # Фиксация в локальной базе данных
+
         record = GroupRecord(
             order_id=req.order_id,
             messenger=res["messenger"],
@@ -146,7 +158,7 @@ async def process_delete_group(data: Dict[str, Any]) -> ServiceResponse:
 # ==============================================================================
 
 class CRMRequestHandler(BaseHTTPRequestHandler):
-    """Обработчик входящих HTTP-запросов от CRM."""
+    """Обработчик входящих HTTP-запросов от CRM с авторизацией и защитой от DoS."""
 
     def _send_json(self, status: int, payload: Dict[str, Any]) -> None:
         raw_body = json.dumps(payload, ensure_ascii=False, indent=2).encode("utf-8")
@@ -157,11 +169,28 @@ class CRMRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw_body)
 
+    def _is_authorized(self) -> bool:
+        """Проверяет авторизацию запроса по SECRET_WEBHOOK_KEY (CWE-306, CWE-862)."""
+        expected_secret = config.SECRET_WEBHOOK_KEY
+        if not expected_secret:
+            return True
+        auth_header = self.headers.get("Authorization", "")
+        if auth_header.startswith("Bearer "):
+            if auth_header[7:].strip() == expected_secret:
+                return True
+        if self.headers.get("X-Webhook-Secret", "") == expected_secret:
+            return True
+        parsed = urlparse(self.path)
+        qs = parse_qs(parsed.query)
+        if qs.get("secret", [""])[0] == expected_secret:
+            return True
+        return False
+
     def do_GET(self) -> None:
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/")
 
-        # Health Check
+        # Health Check (публичный эндпоинт)
         if path == "/health" or path == "":
             self._send_json(200, {
                 "status": "healthy",
@@ -173,10 +202,24 @@ class CRMRequestHandler(BaseHTTPRequestHandler):
             })
             return
 
-        # Список активных групп
+        # Проверка авторизации на доступ к данным (CWE-200)
+        if not self._is_authorized():
+            self._send_json(401, {
+                "error": "Unauthorized",
+                "message": "Требуется заголовок 'X-Webhook-Secret' или 'Authorization: Bearer <SECRET_WEBHOOK_KEY>'.",
+            })
+            return
+
+        # Список активных групп (только для авторизованной CRM)
         if path == "/api/v1/groups":
             groups = [g.to_dict() for g in storage.list_active_groups()]
             self._send_json(200, {"count": len(groups), "groups": groups})
+            return
+
+        # Экспорт реестра в CSV
+        if path == "/api/v1/groups/export":
+            csv_path = storage.export_groups_to_csv()
+            self._send_json(200, {"message": "Экспорт успешно сформирован", "file": str(csv_path)})
             return
 
         # Запрос статуса группы по order_id
@@ -195,7 +238,26 @@ class CRMRequestHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path.rstrip("/")
 
-        content_length = int(self.headers.get("Content-Length", 0))
+        # Проверка авторизации на управляющие действия (CWE-306, CWE-862)
+        if not self._is_authorized():
+            self._send_json(401, {
+                "error": "Unauthorized",
+                "message": "Требуется заголовок 'X-Webhook-Secret' или 'Authorization: Bearer <SECRET_WEBHOOK_KEY>'.",
+            })
+            return
+
+        # Ограничение размера тела запроса для защиты от Memory DoS (CWE-770)
+        MAX_PAYLOAD_SIZE = 1 * 1024 * 1024  # 1 MB
+        try:
+            content_length = int(self.headers.get("Content-Length", 0))
+        except (ValueError, TypeError):
+            self._send_json(400, {"error": "Некорректный заголовок Content-Length"})
+            return
+
+        if content_length < 0 or content_length > MAX_PAYLOAD_SIZE:
+            self._send_json(413, {"error": f"Превышен максимальный размер тела запроса (максимум {MAX_PAYLOAD_SIZE} байт)"})
+            return
+
         if content_length == 0:
             self._send_json(400, {"error": "Отсутствует тело запроса JSON"})
             return
@@ -230,6 +292,7 @@ class CRMRequestHandler(BaseHTTPRequestHandler):
             return
 
         self._send_json(404, {"error": "Not Found", "path": self.path})
+
 
     def log_message(self, format: str, *args: Any) -> None:
         # Интеграция с нашим логером
@@ -311,14 +374,17 @@ def main():
         return
 
     server_address = (args.host, args.port)
-    httpd = HTTPServer(server_address, CRMRequestHandler)
+    httpd = ThreadingHTTPServer(server_address, CRMRequestHandler)
 
     def handle_sigint(sig, frame):
-        logger.info("\nОстановка сервера по сигналу SIGINT...")
+        logger.info("\nОстановка сервера по сигналу завершения...")
         httpd.server_close()
         sys.exit(130)
 
     signal.signal(signal.SIGINT, handle_sigint)
+    if hasattr(signal, "SIGTERM"):
+        signal.signal(signal.SIGTERM, handle_sigint)
+
 
     logger.info("=" * 60)
     logger.info("🚀 ЗАПУСК СЕРВИСА CRM GROUP MANAGER (V1PER)")
