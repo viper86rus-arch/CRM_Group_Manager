@@ -1,11 +1,11 @@
 # 🤖 V1PER IT Solutions | CRM Group Manager: Управление группами в Telegram и Мессенджере МАКС
 
-[![Tests](https://img.shields.io/badge/Tests-6%2F6%20Passed%20(100%25)-brightgreen.svg)](tests/)
-[![Security Audit: Hardened](https://img.shields.io/badge/Security%20Audit-0%20Vulnerabilities%20(Hardened)-brightgreen.svg)](audit_stress_test.py)
-[![Python: 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Studio](https://img.shields.io/badge/Studio-V1PER_IT_Solutions-emerald.svg)]()
-[![Architecture: Clean Zero--Pip](https://img.shields.io/badge/Architecture-Clean%20Zero--Pip-blueviolet.svg)]()
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Tests](https://badgen.net/badge/Tests/6%2F6%20Passed/green)](tests/)
+[![Security Audit: Hardened](https://badgen.net/badge/Security%20Audit/6%2F6%20Hardened/green)](audit_stress_test.py)
+[![Python: 3.10+](https://badgen.net/badge/Python/3.10+/blue?icon=python)](https://www.python.org/)
+[![Studio](https://badgen.net/badge/Studio/V1PER%20IT%20Solutions/cyan)](https://github.com/viper86rus-arch)
+[![Architecture: Clean Zero--Pip](https://badgen.net/badge/Architecture/Clean%20Zero-Pip/purple)](https://github.com/viper86rus-arch/CRM_Group_Manager)
+[![License: MIT](https://badgen.net/badge/license/MIT/yellow)](LICENSE)
 
 Автономный промышленный REST API микросервис студии **V1PER IT Solutions** на **Python**, реализующий автоматическое создание, тонкую настройку политик безопасности, администрирование и удаление проектных рабочих групп в мессенджерах **Telegram** (MTProto) и **Мессенджер МАКС** по вебхукам из корпоративных CRM-систем (Битрикс24, amoCRM, Custom ERP).
 
